@@ -23,7 +23,7 @@ import java.util.*;
 
 public class Runner {
 
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args) {
 
         Calendar calendar = new GregorianCalendar();
 
@@ -39,10 +39,10 @@ public class Runner {
         //print(calendar);*/
 
         createDailyEvent();
-        generateEvents();
+        parseCalendarEvent();
     }
 
-    private static void createDailyEvent() throws Exception {
+    private static void createDailyEvent() {
 
         Calendar calendar = new GregorianCalendar();
         calendar.setFirstDayOfWeek(GregorianCalendar.SUNDAY);
@@ -69,37 +69,45 @@ public class Runner {
 
         System.out.println(calendarEvents);
 
-        FileOutputStream fileOutputStream = new FileOutputStream("calendar.ics");
-        CalendarOutputter calendarOutputter = new CalendarOutputter();
-        calendarOutputter.output(calendarEvents, fileOutputStream);
+        try {
+            FileOutputStream fileOutputStream = new FileOutputStream("calendar.ics");
+            CalendarOutputter calendarOutputter = new CalendarOutputter();
+            calendarOutputter.output(calendarEvents, fileOutputStream);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private static VEvent buildEvent(Uid eventUid, Date startDate, String summary, String rulePattern,
-                                     List<String> requiredAttendees, List<String> optionalAttendees) throws ParseException {
+                                     List<String> requiredAttendees, List<String> optionalAttendees) {
+
         VEvent event = new VEvent(startDate, summary);
-        event.getProperties().add(eventUid);
-        event.getProperties().add(new ProdId(eventUid.getValue()));
-        event.getProperties().add(new RRule(rulePattern));
+        try {
+            event.getProperties().add(eventUid);
+            event.getProperties().add(new ProdId(eventUid.getValue()));
+            event.getProperties().add(new RRule(rulePattern));
 
 
-        requiredAttendees.forEach(attendee -> {
-            Attendee eventAttendee = new Attendee(URI.create(attendee));
-            eventAttendee.getParameters().add(Role.REQ_PARTICIPANT);
-            eventAttendee.getParameters().add(new Cn(String.valueOf(UUID.randomUUID())));
-            event.getProperties().add(eventAttendee);
-        });
+            requiredAttendees.forEach(attendee -> {
+                Attendee eventAttendee = new Attendee(URI.create(attendee));
+                eventAttendee.getParameters().add(Role.REQ_PARTICIPANT);
+                eventAttendee.getParameters().add(new Cn(String.valueOf(UUID.randomUUID())));
+                event.getProperties().add(eventAttendee);
+            });
 
-        optionalAttendees.forEach(attendee -> {
-            Attendee eventAttendee = new Attendee(URI.create(attendee));
-            eventAttendee.getParameters().add(Role.OPT_PARTICIPANT);
-            eventAttendee.getParameters().add(new Cn(String.valueOf(UUID.randomUUID())));
-            event.getProperties().add(eventAttendee);
-        });
-
+            optionalAttendees.forEach(attendee -> {
+                Attendee eventAttendee = new Attendee(URI.create(attendee));
+                eventAttendee.getParameters().add(Role.OPT_PARTICIPANT);
+                eventAttendee.getParameters().add(new Cn(String.valueOf(UUID.randomUUID())));
+                event.getProperties().add(eventAttendee);
+            });
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
         return event;
     }
 
-    private static void generateEvents() throws ParseException {
+    private static void parseCalendarEvent() {
         // Reading the file and build the calendar object
         System.setProperty("net.fortuna.ical4j.timezone.cache.impl", MapTimeZoneCache.class.getName());
         CalendarBuilder builder = new CalendarBuilder();
@@ -111,14 +119,19 @@ public class Runner {
         }
 
         // Create the date range which is desired to look into it.
-        DateTime from = new DateTime("20210628T070000Z");
-        DateTime to = new DateTime("20300628T070000Z");
-        Period period = new Period(from, to);
+        try {
+            DateTime from = new DateTime("20210628T070000Z");
+            DateTime to = new DateTime("20300628T070000Z");
+            Period period = new Period(from, to);
 
-        // For each VEVENT in the ICS, print the recurrence period date and time
-        Objects.requireNonNull(cal).getComponents("VEVENT")
-                .parallelStream()
-                .forEach(event -> event.calculateRecurrenceSet(period).forEach(System.out::println));
+            // For each VEVENT in the ICS, print the recurrence period date and time
+            Objects.requireNonNull(cal).getComponents("VEVENT")
+                    .parallelStream()
+                    .forEach(event -> event.calculateRecurrenceSet(period).forEach(System.out::println));
+
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
     }
 
     private static void print(Calendar calendar) {
